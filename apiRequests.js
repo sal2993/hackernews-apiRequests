@@ -13,7 +13,7 @@
  * - Make the script itself run every minute
  */
 
-var Post = require('../server/models/Post');
+var Post = require('./Post');
 var mongoose = require('mongoose');
 var hn = require('hackernews-api');
 var url = "mongodb://localhost:27017/hndb";
@@ -25,37 +25,33 @@ var url = "mongodb://localhost:27017/hndb";
 * @return       boolean, whether or not the id is in the db
  */
 var is_Post_in_hndb = function (db, postId, callback) {
-    db.once('open', function() {
-        logger.log('info', 'MAIN: db is open: is_Post_in_hndb');
-        Post.find({hnid: postId}, function (err, posts) {
-            if (err) {
-                callback(err, null);
-            }
-            if (posts.length) {
-                callback(null, posts);
-            }
-            // Didnt find post in db
-            else {
-                callback(new Error('Didnt Find post in db'), null);
-            }
-        });
+    logger.log('info', 'MAIN: db is open: is_Post_in_hndb');
+    Post.find({hnid: postId}, function (err, posts) {
+        if (err) {
+            callback(err, null);
+        }
+        if (posts.length) {
+            callback(null, posts);
+        }
+        // Didnt find post in db
+        else {
+            callback(new Error('Didnt Find post in db'), null);
+        }
     });
 };
 
-var add_new_Post = function(db, top_post, callback) {
-    db.once('open', function() {
-        logger.log('info', 'MAIN: db is open: add_new_Post');
-        var myData = new Post({
-            hnid: top_post.id, title: top_post.title,
-            url: top_post.url, votes: top_post.score
-        });
-        myData.initTimeAsTop.push(new Date());
-        myData.save(function (err) {
-            if (err) {
-                callback(err);
-            }
-            callback(null);
-        });
+var add_new_Post = function(top_post, callback) {
+    //logger.log('info', 'MAIN: db is open: add_new_Post');
+    var myData = new Post({
+        hnid: top_post.id, title: top_post.title,
+        url: top_post.url, votes: top_post.score
+    });
+    myData.initTimeAsTop.push(new Date());
+    myData.save(function (err) {
+        if (err) {
+            callback(err);
+        }
+        callback(null);
     });
 }
 
@@ -164,7 +160,7 @@ var add_to_Post_durationAsTop = function (db, post_id, callback) {
 }
 const sleep = require('util').promisify(setTimeout);
 
-const winston = require('winston');
+/* const winston = require('winston');
 const fs = require('fs');
 const logDir = 'log';
 
@@ -189,58 +185,32 @@ const logger = new (winston.Logger) ({
     }),
   ]
 });
+*/
 var lastTopPost = 0;
 
+var mongodb_url = process.env.MONGODB ? process.env.MONGODB : "mongodb://localhost:27017/greetingsDB";
+
+mongoose.connect(mongodb_url, {keepAlive: 120, useNewUrlParser: true });mongoose.Promise = global.Promise;
+var db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
 
 var start = function() {
     var goOn = true;
 
-    logger.log('info', 'MAIN: main has started');
+    // logger.log('info', 'MAIN: main has started');
 
     // Before loop begins, get the top post
     var topPostId = getHackerNewsApiRequest_TopPosts();
     var firstTopPost = getHackerNewsApiRequest_TopPostInfo(topPostId[0]);
     lastTopPost = topPostId[0];
 
-    mongoose.connect(url, { keepAlive: 120 });
-    var db = mongoose.connection;
-    db.on('error', console.error.bind(console, 'connection error:'));
-    is_Post_in_hndb(db, topPostId[0], function (err, post) {
-        if (err) { // Didnt find post in db
-            logger.log('info', "Didnt find post in DB");
-            logger.log('info', "Starting process to add post to db");
-            add_new_Post(db, firstTopPost, function(err){
-                    if (err) {
-                        logger.log('error', 'Could not add new post ERR1');
-                        mongoose.connection.close();
-                    }
-                    else {
-                        logger.log('info', "Successfully Added post: " + topPostId[0]);
-                        mongoose.connection.close();
-                    }
-                });
-        }
-        else { // Found post in db
-            // Delete and add again with new initTime
-            logger.log('info', 'Found Post with same id');
-            delete_Post_by_id(db, topPostId[0], function (err) {
-                if (err) {
-                    logger.log('error', 'Could not delete post: ' + topPostId[0]);
-                }
-                else {
-                    logger.log('info', 'Successfully deleted post (id: ' + topPostId[0] +
-                        ') from db');
-                }
-            });
-            add_new_Post(db, firstTopPost, function (err) {
-                if (err) logger.log('error', 'Could not add new post ERR2');
-                logger.log('info', "Successfully Added post: " + topPostId[0]);
-                mongoose.connection.close();
-            });
-        }
+    add_new_Post(firstTopPost, function (err) {
+        //if (err) logger.log('error', 'Could not add new post ERR2');
+        // logger.log('info', "Successfully Added post: " + topPostId[0]);
+        mongoose.connection.close();
     });
 
-    setInterval(main, 60000);
+    //setInterval(main, 60000);
 }
 var main = function (arg) {
 
