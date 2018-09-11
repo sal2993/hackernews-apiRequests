@@ -1,5 +1,6 @@
 'use strict';
-
+const hn = require('hackernews-api');
+const sleep = require('util').promisify(setTimeout);
 
 /*
  * Title: apiRequests
@@ -13,10 +14,6 @@
  * - Make the script itself run every minute
  */
 
-var Post = require('./Post');
-var mongoose = require('mongoose');
-var hn = require('hackernews-api');
-var url = "mongodb://localhost:27017/hndb";
 // Change something else
 /*
 * @param db     a valid mongoose db connection
@@ -24,200 +21,34 @@ var url = "mongodb://localhost:27017/hndb";
 * @param cb     callback(err, doc)
 * @return       boolean, whether or not the id is in the db
  */
-var is_Post_in_hndb = function (db, postId, callback) {
-    logger.log('info', 'MAIN: db is open: is_Post_in_hndb');
-    Post.find({hnid: postId}, function (err, posts) {
+
+
+
+var createApiReader = function (api, intervalTime) {
+
+    intervalTime = typeof intervalTime !== 'undefined' ? intervalTime : 6000;
+
+    var topPostsId = hn.getTopStories();
+    var firstTopPost = hn.getItem(topPostsId[0]);
+
+    api.process(firstTopPost, function (err, doc) {
         if (err) {
-            callback(err, null);
+            console.log("Something went wrong with processing api data");
         }
-        if (posts.length) {
-            callback(null, posts);
-        }
-        // Didnt find post in db
         else {
-            callback(new Error('Didnt Find post in db'), null);
+            console.log("Process Successful")
+            setInterval(createApiReader, intervalTime);
         }
-    });
-};
 
-var add_new_Post = function(top_post, callback) {
-    //logger.log('info', 'MAIN: db is open: add_new_Post');
-    var myData = new Post({
-        hnid: top_post.id, title: top_post.title,
-        url: top_post.url, votes: top_post.score
     });
-    myData.initTimeAsTop.push(new Date());
-    myData.save(function (err) {
-        if (err) {
-            callback(err);
-        }
-        callback(null);
-    });
+
+
 }
 
-var delete_Post_by_id = function(db, id, callback) {
-    db.once('open', function(){
-        logger.log('info', 'MAIN: db is open: delete_Post_by_id');
-        Post.deleteOne({hnid: id}, function(err) {
-            if (err) {
-                callback(err);
-            }
-            callback(err);
-        });
-    });
-}
-
-var add_to_Post_finalTimeAsTop = function(db, post_id, callback) {
-    db.once('open', function(){
-        logger.log('info', 'MAIN: db is open: add_to_Post_finalTimeAsTop' );
-        Post.findOneAndUpdate({hnid: post_id},
-                {$push: {finalTimeAsTop: new Date()}}, function (err, doc) {
-            if (err) {
-                logger.log('error', "Could not update finalTime. Err:"+err);
-                return callback(err, null);
-            }
-            // Found one or more posts
-            else {
-                logger.log('info', 'Found Post with same id, updating final Time');
-                logger.log('info', 'post found id: '+ doc.hnid);
-                return callback(null, doc);
-            }
-        });
-    });
-};
-
-var add_to_Post_initTimeAsTop = function(db, post_id, callback){
-    db.once('open', function(){
-        logger.log('info', 'MAIN: db is open: add_to_Post_initTimeAsTop');
-        Post.findOneAndUpdate({hnid: post_id},
-                {$push: {initTimeAsTop: new Date()}}, function(err, doc) {
-            if (err) {
-                logger.log('error', "Could not update the initTimeAsTop");
-                return callback(err, null);
-            }
-            // Able to add to initTime
-            else {
-                logger.log('info', '  Found Post with same id, ' +
-                    'updating final Time');
-                logger.log('info', '  post found id: '+ doc.hnid);
-                return callback(null, doc);
-            }
-        });
-    });
-};
-
-var update_Post_score = function(db, top_post, callback){
-
-    db.once('open', function(){
-        logger.log('info', 'MAIN: db is open: update_Post_score');
-        Post.findOneAndUpdate({hnid: top_post.id}, {votes: top_post.score},
-            function(err, doc) {
-                if (err) {
-                    return callback(err, null);
-                }
-                else {
-                    return callback(null, doc);
-                }
-            }
-        );
-    });
-};
-
-var add_to_Post_durationAsTop = function (db, post_id, callback) {
-    db.once('open', function(){
-        logger.log('info', 'MAIN: db is open: add_to_Post_durationAsTop' );
-        Post.findOne({hnid: post_id}, function(err, post) {
-            if (err) {
-                logger.log('error', "Could not find post [duration]. Err:" + err);
-                return callback(err, null);
-            }
-            else{
-                logger.log('info', 'found post.. Post id: '+post.hnid);
-                var duration = 0;
-                for (var i = 0; i < post.finalTimeAsTop.length; i++){
-                    duration = duration + (post.finalTimeAsTop[i] - post.initTimeAsTop[i]);
-                }
-
-                Post.findOneAndUpdate({hnid: post_id}, {$set: {durationAsTop: duration}},
-                    function(err, doc) {
-                        if (err) {
-                            logger.log('error', 'Could not update Duration. Err:'+err);
-                            return callback(err, null);
-                        }
-                        else {
-                            logger.log('info', 'Found Post and was able to insert dur');
-                            return callback(null, doc);
-                        }
-
-                    }
-                );
-                logger.log('info', 'Found Post with same id, updating duration');
-                logger.log('info', " Duration Calculated: "+ duration);
-
-            }
-        });
-    });
-}
-const sleep = require('util').promisify(setTimeout);
-
-/* const winston = require('winston');
-const fs = require('fs');
-const logDir = 'log';
-
-// create the log file
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir);
-}
-
-const tsFormat = () => (new Date()).toLocaleTimeString();
-
-// Create Winston Logger
-const logger = new (winston.Logger) ({
-  transports: [
-    new (winston.transports.File)({
-      filename: `${logDir}/combined.log`,
-      timestamp: tsFormat
-    }),
-    new (winston.transports.Console)({
-      timestamp: tsFormat,
-      colorize: true,
-      level: 'info'
-    }),
-  ]
-});
-*/
-var lastTopPost = 0;
-
-var mongodb_url = process.env.MONGODB ? process.env.MONGODB : "mongodb://localhost:27017/greetingsDB";
-
-mongoose.connect(mongodb_url, {keepAlive: 120, useNewUrlParser: true });mongoose.Promise = global.Promise;
-var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-
-var start = function() {
-    var goOn = true;
-
-    // logger.log('info', 'MAIN: main has started');
-
-    // Before loop begins, get the top post
-    var topPostId = getHackerNewsApiRequest_TopPosts();
-    var firstTopPost = getHackerNewsApiRequest_TopPostInfo(topPostId[0]);
-    lastTopPost = topPostId[0];
-
-    add_new_Post(firstTopPost, function (err) {
-        //if (err) logger.log('error', 'Could not add new post ERR2');
-        // logger.log('info', "Successfully Added post: " + topPostId[0]);
-        mongoose.connection.close();
-    });
-
-    //setInterval(main, 60000);
-}
+/*
 var main = function (arg) {
 
-    mongoose.connect(url, { keepAlive: 120 });
 
-    var db = mongoose.connection;
-    db.on('error', console.error.bind(console, 'connection error:'));
     var topPostId = getHackerNewsApiRequest_TopPosts();
     logger.log('debug', 'spot 0')
     var firstTopPost = getHackerNewsApiRequest_TopPostInfo(topPostId[0]);
@@ -310,30 +141,7 @@ var main = function (arg) {
         lastTopPost = topPostId[0];
     }
 };
-
-function connectToDatabase(url) {
-    mongoose.connect(url, { keepAlive: 120 });
-    var db = mongoose.connection;
-    db.on('error', console.error.bind(console, 'connection error:'));
-    return db;
-}
-
-function getHackerNewsApiRequest_TopPosts(){
-    var topPostId = hn.getTopStories();
-    return topPostId;
-}
-
-function getHackerNewsApiRequest_TopPostInfo(topPostId){
-    var firstTopPost = hn.getItem(topPostId);
-    return firstTopPost;
-}
+*/
 
 
-module.exports.start = start;
-module.exports.is_Post_in_hndb = is_Post_in_hndb;
-module.exports.add_new_Post = add_new_Post;
-module.exports.delete_Post_by_id = delete_Post_by_id;
-module.exports.add_to_Post_finalTimeAsTop = add_to_Post_finalTimeAsTop;
-module.exports.add_to_Post_initTimeAsTop = add_to_Post_initTimeAsTop;
-module.exports.update_Post_score = update_Post_score;
-module.exports.add_to_Post_durationAsTop = add_to_Post_durationAsTop ;
+module.exports.createApiReader = createApiReader;

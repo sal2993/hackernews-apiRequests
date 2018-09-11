@@ -1,0 +1,24 @@
+{
+  "name": "hackernews-apirequests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "start_apiRequests.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sal2993/hackernews-apiRequests.git"
+  },
+  "author": "sal camara",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sal2993/hackernews-apiRequests/issues"
+  },
+  "homepage": "https://github.com/sal2993/hackernews-apiRequests#readme",
+  "dependencies": {
+    "hackernews-api": "^1.0.0",
+    "mongoose": "^5.2.14",
+    "winston": "^3.1.0"
+  }
+}
