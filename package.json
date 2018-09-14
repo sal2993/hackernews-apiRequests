@@ -4,7 +4,7 @@
   "description": "",
   "main": "start_apiRequests.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --detectOpenHandles"
   },
   "repository": {
     "type": "git",
@@ -20,5 +20,13 @@
     "hackernews-api": "^1.0.0",
     "mongoose": "^5.2.14",
     "winston": "^3.1.0"
+  },
+  "devDependencies": {
+    "grunt": "^1.0.3",
+    "grunt-concurrent": "^2.3.1",
+    "grunt-contrib-jshint": "^1.1.0",
+    "grunt-contrib-watch": "^1.1.0",
+    "grunt-run": "^0.8.1",
+    "jest": "^23.6.0"
   }
 }

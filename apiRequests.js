@@ -9,41 +9,18 @@ const sleep = require('util').promisify(setTimeout);
  *
  */
 
-/*
- * Methods of achieving goal:
- * - Make the script itself run every minute
- */
 
-// Change something else
-/*
-* @param db     a valid mongoose db connection
-* @param postId a hackernews post id
-* @param cb     callback(err, doc)
-* @return       boolean, whether or not the id is in the db
- */
-
-
-
-var createApiReader = function (api, intervalTime) {
+var createApiReader = function (app, intervalTime) {
 
     intervalTime = typeof intervalTime !== 'undefined' ? intervalTime : 6000;
-
+    setInterval(main, intervalTime, app);
+};
+var main = function (app) {
     var topPostsId = hn.getTopStories();
     var firstTopPost = hn.getItem(topPostsId[0]);
+    app.process(firstTopPost);
 
-    api.process(firstTopPost, function (err, doc) {
-        if (err) {
-            console.log("Something went wrong with processing api data");
-        }
-        else {
-            console.log("Process Successful")
-            setInterval(createApiReader, intervalTime);
-        }
-
-    });
-
-
-}
+};
 
 /*
 var main = function (arg) {
