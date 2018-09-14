@@ -1,6 +1,5 @@
 'use strict';
 const hn = require('hackernews-api');
-const sleep = require('util').promisify(setTimeout);
 
 /*
  * Title: apiRequests
