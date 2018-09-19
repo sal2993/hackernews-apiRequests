@@ -4,7 +4,8 @@
   "description": "",
   "main": "start_apiRequests.js",
   "scripts": {
-    "test": "jest --detectOpenHandles"
+    "test": "jest --detectOpenHandles",
+    "start": "node ./start_apiRequests.js"
   },
   "repository": {
     "type": "git",
