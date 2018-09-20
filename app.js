@@ -4,19 +4,19 @@ logger = require("./config/winston");
 
 var lastTopPostHNID;
 Post.find({}).sort({"_id": -1}).limit(1).exec(function (err, doc) {
-    console.log(doc);
+    logger.log('info',doc);
     lastTopPostHNID = doc[0].hnid;
-    console.log(lastTopPostHNID);
+    logger.log('info',lastTopPostHNID);
 });
-console.log("app Here");
+logger.log('info',"app Here");
 
 var process = function (firstTopPost) {
-    console.log("FTP2: "+firstTopPost.id, firstTopPost.title);
+    logger.log('info',"FTP2: "+firstTopPost.id, firstTopPost.title);
 
-    console.log("firstTopPost.hnid: "+ firstTopPost.id);
-    console.log("vs: lastTopPostHNID: "+lastTopPostHNID);
+    logger.log('info',"firstTopPost.hnid: "+ firstTopPost.id);
+    logger.log('info',"vs: lastTopPostHNID: "+lastTopPostHNID);
     if ( firstTopPost.id === lastTopPostHNID ) {
-        console.log("Current Top Post is equal to LastTopPost");
+        logger.log('info',"Current Top Post is equal to LastTopPost");
         apiRequestLogic.update_Post_score(firstTopPost, function(err) {
             if (err) {
                 logger.log("info", "ERROR: "+err);
@@ -25,7 +25,7 @@ var process = function (firstTopPost) {
     }
     // There has been a 'top post' change
     else {
-        console.log("The top post has changed!");
+        logger.log('info',"The top post has changed!");
         apiRequestLogic.is_Post_in_hndb(lastTopPostHNID, function(err, doc) {
 
         })
